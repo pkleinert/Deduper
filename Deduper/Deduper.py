@@ -1,7 +1,7 @@
 import hashlib
 import sys
 import time
-import docstring
+#import docstring
 
 block_size = 32*1024
 
@@ -65,6 +65,7 @@ def hash_from_file(file_hash):
             list.append(line.strip())
     return {'dict': dict, 'list': list}
 
+
 def deduplicate1(file_base, file_base_hashes, file_child, file_child_hashes, file_diff_ids, file_diff_data, print_progress=False):
     # Get block hashes of base file
     print('Hashing: base')
@@ -95,69 +96,95 @@ def deduplicate1(file_base, file_base_hashes, file_child, file_child_hashes, fil
     return blocks
 
 
-def deduplicate2(file_base, file_child, file_diff_ids, file_diff_data, print_progress=False):
+def deduplicate2(file_base, file_child, file_diffs, print_progress=False):
     # Hash blocks of base file
     if print_progress:
-        print('Hashing: base...')
+        print('Hashing: base')
     hashes_base = hash_to_mem(file_base, print_progress)
 
     # Hash blocks of child file
     if print_progress:
-        print('Hashing: child...')
+        print('Hashing: child')
     hashes_child = hash_to_mem(file_child, print_progress)
 
     # Compare the base and child block hashes
     if print_progress:
-        print('Comparing...')
+        print('Comparing')
     base_dict = hashes_base['dict']
     blocks = [0, 0]
     just_base = True
     with open(file_child, "rb") as fc:
-        with open(file_diff_ids, "w") as fi:
-            with open(file_diff_data, "wb") as fd:
-                for hash in hashes_child['list']:
-                    if hash in base_dict:
-                        fi.write("B" + '{:04x}'.format(base_dict[hash]) + "\n")
-                        blocks[0] += 1
+        with open(file_diffs, "wb") as fd:
+			# Make room for the indexes and the index end marker
+            print("Indexes count: ", len(hashes_child['list']))
+            fd.seek(( len(hashes_child['list']) + 1) * (1 + 8 + 2))
+            indexes = ""
+
+			# Start finding and outputting original blocks
+            for hash in hashes_child['list']:
+                if hash in base_dict:
+#                   fi.write("B" + '{:08x}'.format(base_dict[hash]) + "\n")
+                    indexes += "B" + '{:08x}'.format(base_dict[hash]) + "\r\n"
+                    blocks[0] += 1
+                else:
+#                   fi.write("C" + '{:08x}'.format(blocks[1]) + "\n")
+                    indexes += "C" + '{:08x}'.format(blocks[1]) + "\r\n"
+                    fc.seek((blocks[0]+blocks[1]) * block_size)
+                    block_data = fc.read(block_size)
+                    fd.write(block_data)
+                    blocks[1] += 1
+                    just_base = False
+
+                if print_progress and (blocks[0]+blocks[1]) % 1000 == 0:
+                    if just_base:
+                        print('.', end='', flush=True)
                     else:
-                        fi.write("C" + '{:04x}'.format(blocks[1]) + "\n")
-                        fc.seek((blocks[0]+blocks[1]) * block_size)
-                        block_data = fc.read(block_size)
-                        fd.write(block_data)
-                        blocks[1] += 1
-                        just_base = False
-                    if print_progress and (blocks[0]+blocks[1]) % 1000 == 0:
-                        if just_base:
-                            print('.', end='', flush=True)
-                        else:
-                            print('#', end='', flush=True)
-                        just_base = True
+                        print('#', end='', flush=True)
+                    just_base = True
+
+            # Write indexes and end marker to the beginning of the file
+            indexes += "Effffffff\r\n"
+            fd.seek(0)
+            fd.write(indexes.encode('ascii'))
+
     if print_progress:
         print("")
+
     return blocks
 
-def restore(file_base, file_child, file_diff_ids, file_diff_data, print_progress = False):
+def restore(file_base, file_child, file_diffs, print_progress = False):
     start_time = time.time()
     with open(file_base, "rb") as fb:
         with open(file_child, "wb") as fc:
-            with open(file_diff_ids, "r") as fi:
-                with open(file_diff_data, "rb") as fd:
-                    for block_num, line in enumerate(fi):
-                        line = line.strip()
-                        block_ptr = int(line[1:], 16)
-                        if line[0] == "B":
-                            fb.seek(block_ptr * block_size)
-                            block_data = fb.read(block_size)
-                        elif line[0] == "C":
-                            fd.seek(block_ptr * block_size)
-                            block_data = fd.read(block_size)
-                        else:
-                            print("Error! Unknown block type '", line[0], "'")
-                            return
-                        fc.write(block_data)
+            with open(file_diffs, "rb") as fd:
+                print("Reading: indexes")
+                lines = []
+                while True:
+                    line = fd.read(1 + 8 + 2)
+                    line = line.decode().strip()
+                    if line == "Effffffff":
+                        break;
+                    lines.append(line)
 
-                        if print_progress and block_num % 1000 == 0:
-                            print('.', end='', flush=True)
+                data_begin_pos = fd.tell()
+                print("Combining base and diffs to the output")
+                block_num = 0
+                for line in lines:
+                    block_num += 1
+                    block_ptr = int(line[1:], 16)
+                    if line[0] == "B":
+                        fb.seek(block_ptr * block_size)
+                        block_data = fb.read(block_size)
+                    elif line[0] == "C":
+                        fd.seek(data_begin_pos + block_ptr * block_size)
+                        block_data = fd.read(block_size)
+                    else:
+                        print("Error! Unknown block type '", line[0], "'")
+                        return
+                    fc.write(block_data)
+
+                    if print_progress and block_num % 1000 == 0:
+                        print('.', end='', flush=True)
     if print_progress:
         print("\nRestoring speed: ", str(block_size * block_num / 1024 / (time.time() - start_time) / 1024), " MB/s")
 
@@ -182,22 +209,20 @@ if __name__ == '__main__':
         hash_to_file(file_base, file_hash, True)
 
     # Restore
-    elif len(sys.argv) == 6 and (sys.argv[1] == "--restore" or sys.argv[1] == "-r"):
+    elif len(sys.argv) == 5 and (sys.argv[1] == "--restore" or sys.argv[1] == "-r"):
         file_base			= sys.argv[2]
         file_child			= sys.argv[3]
-        file_diff_ids		= sys.argv[4]
-        file_diff_data		= sys.argv[5]
+        file_diffs  		= sys.argv[4]
 
-        restore(file_base, file_child, file_diff_ids, file_diff_data, True)
+        restore(file_base, file_child, file_diffs, True)
 
     # New deduplication
-    elif len(sys.argv) == 6 and (sys.argv[1] == "--dedup" or sys.argv[1] == "-d"):
+    elif len(sys.argv) == 5 and (sys.argv[1] == "--dedup" or sys.argv[1] == "-d"):
         file_base		= sys.argv[2]
         file_child		= sys.argv[3]
-        file_diff_ids	= sys.argv[4]
-        file_diff_data	= sys.argv[5]
+        file_diffs  	= sys.argv[4]
 
-        blocks = deduplicate2(file_base, file_child, file_diff_ids, file_diff_data, True)
+        blocks = deduplicate2(file_base, file_child, file_diffs, True)
 
         original_data_size = blocks[1] * block_size
         diff_file_size = ( (blocks[0] + blocks[1] * 5) + original_data_size )
