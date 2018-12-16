@@ -4,9 +4,70 @@ import time
 from pathlib import Path
 #import docstring
 
+# Threading
+import os
+import psutil
+
 ext_hashes=".dh1"
 
 block_size = 64*1024
+
+import threading
+import time
+
+class StoppableThread(threading.Thread):
+    def __init__(self):
+        super(StoppableThread, self).__init__()
+        self.daemon = True
+        self.__monitor = threading.Event()
+        self.__monitor.set()
+        self.__has_shutdown = False
+
+    def run(self):
+        '''Overloads the threading.Thread.run'''
+        # Call the User's Startup functions
+        self.startup()
+
+        # Loop until the thread is stopped
+        while self.isRunning():
+            self.mainloop()
+
+        # Clean up
+        self.cleanup()
+
+        # Flag to the outside world that the thread has exited AND that the cleanup is complete
+        self.__has_shutdown = True
+
+    def stop(self):
+        self.__monitor.clear()
+
+    def isRunning(self):
+        return self.__monitor.isSet()
+
+    def isShutdown(self):
+        return self.__has_shutdown
+
+
+class MemUsageSniffingClass(StoppableThread):
+    def __init__(self, refresh_time):
+        super(MemUsageSniffingClass, self).__init__()
+        self.max_mem = 0
+        self.refresh_time = refresh_time
+
+    def startup(self):
+        # Overload the startup function
+        pass
+
+    def cleanup(self):
+        # Overload the cleanup function
+        pass
+
+    def mainloop(self):
+        curr_mem = psutil.Process(os.getpid()).memory_info().rss
+        if curr_mem > self.max_mem:
+            self.max_mem = curr_mem
+        time.sleep(self.refresh_time)
+
 
 def hash_to_mem(file, print_progress=False):
     block_num = 0
@@ -169,6 +230,10 @@ if __name__ == '__main__':
 
     g_start_time = time.time()
 
+    # Enable RSS process memory monitoring each 1 second
+    mem_usage_thread = MemUsageSniffingClass(1)
+    mem_usage_thread.start()
+
     # Help
     if len(sys.argv) == 1 and True == True:
         print("Syntax: Deduper.exe <command> [parameters]")
@@ -219,4 +284,5 @@ if __name__ == '__main__':
     else:
         print("Error")
 
-    print("Done in %d:%02d" % divmod(time.time() - g_start_time, 60) )
+    print("Done in %d:%02d" % divmod(time.time() - g_start_time, 60), end='' )
+    print("; maximum RAM usage %.0f MB" % (mem_usage_thread.max_mem / 1024 / 1024))
