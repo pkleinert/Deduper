@@ -8,9 +8,12 @@ from pathlib import Path
 import os
 import psutil
 
-ext_hashes=".dh1"
+# xxHash
+import xxhash
 
-block_size = 64*1024
+ext_hashes=".dhx"
+
+block_size = 32*1024
 
 import threading
 import time
@@ -78,17 +81,17 @@ def hash_to_mem(file, print_progress=False):
         # Read first block
         block = f.read(block_size)
         while block != b"":
-            # Computer SHA256 hash of read block
-            hash_object = hashlib.sha256(block)
-            hex_dig = hash_object.hexdigest()
+            # Compute hash of read block
+#            hex_dig = hashlib.sha256(block).hexdigest()
+            hex_dig = xxhash.xxh64_hexdigest(block, 20181217)
+
+            # Read next block
+            block = f.read(block_size)
 
             # Store the block hash to the dict (if unique) and also to the list of blocks (always)
             if not hex_dig in dict:
                 dict[hex_dig] = block_num
             list.append(hex_dig)
-
-            # Read next block
-            block = f.read(block_size)
 
             block_num += 1
 
@@ -285,4 +288,4 @@ if __name__ == '__main__':
         print("Error")
 
     print("Done in %d:%02d" % divmod(time.time() - g_start_time, 60), end='' )
-    print("; maximum RAM usage %.0f MB" % (mem_usage_thread.max_mem / 1024 / 1024))
+    print("; peak RAM usage %.0f MB" % (mem_usage_thread.max_mem / 1024 / 1024))
