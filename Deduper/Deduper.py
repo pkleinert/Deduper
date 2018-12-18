@@ -5,6 +5,7 @@ from pathlib import Path
 #import docstring
 
 # Threading
+import threading
 import os
 import psutil
 
@@ -12,11 +13,8 @@ import psutil
 import xxhash
 
 ext_hashes=".dhx"
-
+hash_salt = 20181217
 block_size = 32*1024
-
-import threading
-import time
 
 class StoppableThread(threading.Thread):
     def __init__(self):
@@ -83,7 +81,7 @@ def hash_to_mem(file, print_progress=False):
         while block != b"":
             # Compute hash of read block
 #            hex_dig = hashlib.sha256(block).hexdigest()
-            hex_dig = xxhash.xxh64_hexdigest(block, 20181217)
+            hex_dig = xxhash.xxh64_intdigest(block, 20181217)
 
             # Read next block
             block = f.read(block_size)
@@ -109,7 +107,7 @@ def hash_to_mem(file, print_progress=False):
 def write_hashes_to_file(hashes, file_hash):
     with open(file_hash, "w") as fh:
         for hash in hashes['list']:
-            fh.write(hash + "\n")
+            fh.write(hex(hash)[2:] + "\n")
 
 
 def hash_from_file(file_hash):
@@ -117,9 +115,10 @@ def hash_from_file(file_hash):
     list = []
     with open(file_hash, "r") as fh:
         for cnt, line in enumerate(fh):
-            if not line.strip() in dict:
-                dict[line.strip()] = cnt
-            list.append(line.strip())
+            hash = int(line.strip(),16)
+            if not hash in dict:
+                dict[hash] = cnt
+            list.append(hash)
     return {'dict': dict, 'list': list}
 
 
