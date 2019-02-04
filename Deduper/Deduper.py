@@ -126,20 +126,20 @@ def deduplicate(file_base, file_child, file_diffs, print_progress=False):
     # Hash blocks of base file
     file_indexes_base = file_base + ext_hashes
     if Path(file_indexes_base).is_file() and Path(file_base).stat().st_mtime <= Path(file_indexes_base).stat().st_mtime:
-        print('Base: reading from', file_indexes_base)
+        print(f'Base:  reading {file_indexes_base}')
         hashes_base = hash_from_file(file_indexes_base)
     else:
-        print('Base: hashing', file_base)
+        print(f'Base:  hashing {file_base}')
         hashes_base = hash_to_mem(file_base, print_progress)
         write_hashes_to_file(hashes_base, file_indexes_base)
 
     # Hash blocks of child file
     file_indexes_child = file_child + ext_hashes
     if Path(file_indexes_child).is_file()  and Path(file_child).stat().st_mtime <= Path(file_indexes_child).stat().st_mtime:
-        print('Child: reading from', file_indexes_child)
+        print(f'Child: reading {file_indexes_child}')
         hashes_child = hash_from_file(file_indexes_child)
     else:
-        print('Child: hashing', file_child)
+        print(f'Child: hashing {file_child}')
         hashes_child = hash_to_mem(file_child, print_progress)
         write_hashes_to_file(hashes_child, file_child + ext_hashes)
 
@@ -151,7 +151,7 @@ def deduplicate(file_base, file_child, file_diffs, print_progress=False):
     with open(file_child, "rb") as fc:
         with open(file_diffs, "wb") as fd:
 			# Make room for the indexes and the index end marker
-            print("Comparing", len(hashes_child['list']), "indexes")
+            print(f"Dedup: {len(hashes_child['list'])} indexes")
             fd.seek(( len(hashes_child['list']) + 1) * (1 + 8 + 2))
             indexes = ""
 
@@ -182,6 +182,7 @@ def deduplicate(file_base, file_child, file_diffs, print_progress=False):
 
     if print_progress:
         print("")
+
     print(" Deduplication speed: %8.3f MB/s" % (block_size * (blocks[0]+blocks[1]) / 1024 / (time.time() - start_time + 0.1) / 1024) )
     print(" Deduplication took:  %d:%02d" % divmod(time.time() - start_time, 60) )
 
@@ -189,10 +190,13 @@ def deduplicate(file_base, file_child, file_diffs, print_progress=False):
 
 def restore(file_base, file_child, file_diffs, print_progress = False):
     start_time = time.time()
+    print(f'Base:   {file_base}')
+    print(f'Child:  {file_child}  (output)')
+    print(f'Diffs:  {file_diffs}')
     with open(file_base, "rb") as fb:
         with open(file_child, "wb") as fc:
             with open(file_diffs, "rb") as fd:
-                print("Reading: indexes")
+                print("Reading: block indexes")
                 lines = []
                 while True:
                     line = fd.read(1 + 8 + 2)
@@ -202,7 +206,7 @@ def restore(file_base, file_child, file_diffs, print_progress = False):
                     lines.append(line)
 
                 data_begin_pos = fd.tell()
-                print("Combining base and diffs to the output")
+                print("Combining base and differential files to recreate child file")
                 block_num = 0
                 for line in lines:
                     block_num += 1
@@ -241,10 +245,10 @@ if __name__ == '__main__':
         print("Syntax: Deduper.exe <command> [parameters]")
         print("Commands:")
         print("-h --hash    <file_input>   [file_hash_out]")
-        print("-r --restore <file_base_in> <file_child_out> <file_diffs_in>")
         print("-d --dedup   <file_base_in> <file_child_in> <file_diffs_out>")
-        print("Alternativeny -sd or --silent-dedup to skip printing the progress")
-        print("Note: Block size:", block_size)
+        print("-r --restore <file_base_in> <file_child_out> <file_diffs_in>")
+        print("Use: -sd or --silent-dedup to deduplicate without printing progress")
+        print(f"Note: Block size: {block_size}B, Initial hash: {hash_salt}")
 
     # Create hash
     elif (len(sys.argv) == 3 or len(sys.argv) == 4) and (sys.argv[1] == "--hash" or sys.argv[1] == "-h"):
@@ -276,6 +280,7 @@ if __name__ == '__main__':
         original_data_size = blocks[1] * block_size
         diff_file_size = ( (blocks[0] + blocks[1] * 5) + original_data_size )
 
+        print("Statistics")
         print(" Block size:          %8.3f KB" % (block_size / 1024) )
         print(" Unique blocks:       %8i" % (blocks[1]) )
         print(" Deduplicated blocks: %8i" % (blocks[0]) )
@@ -283,6 +288,11 @@ if __name__ == '__main__':
         print(" Child file size:   %10.3f MB" % (Path(file_child).stat().st_size / 1024 / 1024) )
         print(" Unique data size:  %10.3f MB" % (original_data_size / 1024 / 1024) )
         print(" Diff file size:    %10.3f MB" % (diff_file_size / 1024 / 1024) )
+
+        # Create restore script
+        with open(file_child+".cmd", "w") as fs:
+            fs.write(f"@REM Run this script to restore the original deduplicated file; block size:{block_size}B, hash:{hash_salt}\n")
+            fs.write(f"@{sys.argv[0]} -r {file_base} {file_child} {file_diffs}")
     else:
         print("Error")
 
