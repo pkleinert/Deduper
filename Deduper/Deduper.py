@@ -292,7 +292,7 @@ if __name__ == '__main__':
         # Create restore script
         with open(file_child+".cmd", "w") as fs:
             fs.write(f"@REM Run this script to restore the original deduplicated file; block size:{block_size}B, hash:{hash_salt}\n")
-            fs.write(f"@{sys.argv[0]} -r {file_base} {file_child} {file_diffs}")
+            fs.write(f"@\"{sys.argv[0]}\" -r \"{file_base}\" \"{file_child}\" \"{file_diffs}\"")
     else:
         print("Error")
 
