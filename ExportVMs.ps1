@@ -1,4 +1,6 @@
 $ExportPath="F:\Hyper-V-Bak"
+$DedupBase='G:\Hyper-V-Bak\' + $env:computername + '\'
+$DiffBackupFolder='G:\Hyper-V-Bak-Diff\' + $env:computername + '\'
 
 Write-Output "Starting Hyper-V backup job" | Out-File -Force "$LogFile"
 
@@ -74,8 +76,6 @@ Write-Output "$ExportPath" >> $HistoryFile
 
 
 # Deduplicate
-$DedupBase="g:\Hyper-V-Bak\HYPERV3\"
-$DiffBackupFolder="g:\Hyper-V-Bak-Diff\HYPERV3\"
 $BaseFolder=$DedupBase + (Get-Content ($BaseFolder + '\dedup_last_full.txt') -TotalCount 1)
 Write-Output "Dedup.ps1 $BaseFolder $ExportPath $DiffBackupFolder" | Out-File -Append "$LogFile"
 HyperVBackupDeduper.ps1 "$BaseFolder" "$ExportPath" "$DiffBackupFolder"
