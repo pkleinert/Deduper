@@ -2,6 +2,7 @@
 # Par1 - Base Folder: "g:\Hyper-V-Bak\HYPERV3\20190301-0005"
 # Par2 - Backup Folder: "f:\Hyper-V-Bak\HYPERV3\20190303-0006"
 # Par3 - Diff Backup Folder: "g:\Hyper-V-Bak-Diff\HYPERV3\20190303-0006" (optional)
+# Par4 - Path to the Dedup.exe; default: ".\Deduper.exe"
 
 Param (
   [Parameter(Mandatory=$true)][String]$BaseFolder,
@@ -43,13 +44,15 @@ echo "Deduplicating VHD disks:"
 DoDedup("*.vhd")
 echo "Deduplicating VHDX disks:"
 DoDedup("*.vhdx")
+echo "Deduplicating AVHDX disks:"
+DoDedup("*.avhdx")
 
-# Copy deduplicated backups to a new folder (skip *.VHD* files)
+# Copy deduplicated backups to a new folder (skip VHD, VHDX, AVHDX files)
 if (-not ([string]::IsNullOrEmpty($DiffBackupFolder)))
 {
   echo "Copying deduplicated backups to folder: $DiffBackupFolder"
   New-Item -Force "$DiffBackupFolder" -type directory | Out-Null
-  $exclude = @("*.vhd","*.vhdx")
+  $exclude = @("*.vhd","*.vhdx","*.avhdx")
   Get-ChildItem $BackupFolder -Recurse -Exclude $exclude | Copy-Item -Destination {Join-Path $DiffBackupFolder $_.FullName.Substring($BackupFolder.length)}
   echo "Done"
 } else {
