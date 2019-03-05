@@ -40,10 +40,10 @@ echo "Deduplication base: $BaseFolder"
 echo "Backup to dedup:    $BackupFolder"
 echo "Dedup destination:  $DiffBackupFolder"
 
-echo "Deduplicating VHD disks:"
-DoDedup("*.vhd")
 echo "Deduplicating VHDX disks:"
 DoDedup("*.vhdx")
+echo "Deduplicating VHD disks:"
+DoDedup("*.vhd")
 echo "Deduplicating AVHDX disks:"
 DoDedup("*.avhdx")
 
