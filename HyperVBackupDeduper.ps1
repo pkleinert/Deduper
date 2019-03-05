@@ -7,7 +7,7 @@ Param (
   [Parameter(Mandatory=$true)][String]$BaseFolder,
   [Parameter(Mandatory=$true)][String]$BackupFolder,
   [String]$DiffBackupFolder = '',
-  [string]$DeduperExe=".\Deduper.exe",
+  [string]$DeduperExe=".\Deduper.exe"
 )
 
 function DoDedup {
@@ -48,8 +48,9 @@ DoDedup("*.vhdx")
 if (-not ([string]::IsNullOrEmpty($DiffBackupFolder)))
 {
   echo "Copying deduplicated backups to folder: $DiffBackupFolder"
+  New-Item -Force "$DiffBackupFolder" -type directory | Out-Null
   $exclude = @("*.vhd","*.vhdx")
-  Get-ChildItem $BackupFolder -Recurse -Exclude $exclude | Copy-Item -Destination {Join-Path $DiffBackupFolder $_.FullName.Substring($source.length - 1)}
+  Get-ChildItem $BackupFolder -Recurse -Exclude $exclude | Copy-Item -Destination {Join-Path $DiffBackupFolder $_.FullName.Substring($BackupFolder.length)}
   echo "Done"
 } else {
   echo "NOT copying deduplicated backups to folder: No destination folder specified"
