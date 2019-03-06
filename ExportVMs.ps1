@@ -53,7 +53,7 @@ if ($HistoryKeep -lt 0) {
 }
 
 Import-Module Hyper-V
-$VMs = Get-VM "User-NetBox"
+$VMs = Get-VM
 
 Write-Output "Starting backup at $(Get-Date -format "HH:mm:ss")" | Tee-Object -Append -FilePath "$LogFile"
 foreach($VM in $VMs)
