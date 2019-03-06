@@ -1,12 +1,13 @@
-# Dedup.ps1
-# Par1 - Base Folder: "g:\Hyper-V-Bak\HYPERV3\20190301-0005"
-# Par2 - Backup Folder: "f:\Hyper-V-Bak\HYPERV3\20190303-0006"
-# Par3 - Diff Backup Folder: "g:\Hyper-V-Bak-Diff\HYPERV3\20190303-0006" (optional)
-# Par4 - Path to the Dedup.exe; default: ".\Deduper.exe"
+# HyperVBackupDeduper.ps1 - Deduplicates files and optionally copies the deduplicated ones to a different folder
+#
+# Par1 - Backup Folder: "F:\Hyper-V-Bak\HYPERV3\20190303-0006"
+# Par2 - (opt) Base Folder: "G:\Hyper-V-Bak\HYPERV3\20190301-0005"
+# Par3 - (opt) Diff Backup Folder: "G:\Hyper-V-Bak-Diff\HYPERV3\20190303-0006" (optional)
+# Par4 - (opt) Path to the Dedup.exe; default: ".\Deduper.exe"
 
 Param (
-  [Parameter(Mandatory=$true)][String]$BaseFolder,
   [Parameter(Mandatory=$true)][String]$BackupFolder,
+  [String]$BaseFolder = '', # if empty: just create hashes for a new base backup creation
   [String]$DiffBackupFolder = '',
   [string]$DeduperExe=".\Deduper.exe"
 )
@@ -16,22 +17,29 @@ function DoDedup {
   $DiskPaths=(Get-ChildItem -Recurse -Path "$BackupFolder" -File -Filter $filter -Name)
   foreach($DiskPath in $diskPaths) {
     echo ("{0:yyyy-MM-dd hh:mm:ss}" -f (get-date))
-    $FileBase="$BaseFolder\$DiskPath"
     $FileLast="$BackupFolder\$DiskPath"
-    $FileDedup=([IO.Path]::GetDirectoryName($FileLast) + '\' + [IO.Path]::GetFileNameWithoutExtension($FileLast) + ".dex")
 
-    if (Test-Path $FileBase) {
-      if (Test-Path $FileDedup) {
-        # Skip - Deduplicated file exists already
-        echo ":D $FileBase # $FileLast -> $FileDedup"
-      } else {
-        # Deduplicate
-        echo ":) $FileBase # $FileLast -> $FileDedup"
-        &($DeduperExe) -sd "$FileBase" "$FileLast" "$FileDedup"
-      }
+    if (([string]::IsNullOrEmpty($BaseFolder))) {
+      # Just create hashes; don't deduplicate
+      echo ":] $FileLast"
+      &($DeduperExe) -sh "$FileLast"
     } else {
-      # Skip - There is no corresponding deduplication base
-      echo ":( $FileBase"
+      # Deduplicate
+      $FileBase="$BaseFolder\$DiskPath"
+      $FileDedup=$FileLast + ".dex"
+      if (Test-Path $FileBase) {
+        if (Test-Path $FileDedup) {
+          # Skip - Deduplicated file exists already
+          echo ":D $FileBase # $FileLast -> $FileDedup"
+        } else {
+          # Deduplicate
+          echo ":) $FileBase # $FileLast -> $FileDedup"
+          &($DeduperExe) -sd "$FileBase" "$FileLast" "$FileDedup"
+        }
+      } else {
+        # Skip - There is no corresponding deduplication base
+        echo ":( $FileBase"
+      }
     }
   }
 }
