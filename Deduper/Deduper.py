@@ -251,15 +251,12 @@ if __name__ == '__main__':
         print(f"Note: Block size: {block_size}B, Initial hash: {hash_salt}")
 
     # Create hash
-    elif (len(sys.argv) == 3 or len(sys.argv) == 4) and (sys.argv[1] == "--hash" or sys.argv[1] == "-h"):
+    elif len(sys.argv) == 3 and (sys.argv[1] == "--hash" or sys.argv[1] == "-h" or sys.argv[1] == "--silent-hash" or sys.argv[1] == "-sh"):
         file_base  = sys.argv[2]
-        if len(sys.argv) == 4:
-            file_hash = sys.argv[3]
-        else:
-            file_hash = file_base + ext_hashes
+        file_indexes_base = file_base + ext_hashes
 
-        hashes_child = hash_to_mem(file_child, True)
-        write_hashes_to_file(hashes_child, file_hash)
+        hashes_base = hash_to_mem(file_base, sys.argv[1] == "--hash" or sys.argv[1] == "-h")
+        write_hashes_to_file(hashes_base, file_indexes_base)
 
     # Restore
     elif len(sys.argv) == 5 and (sys.argv[1] == "--restore" or sys.argv[1] == "-r"):
@@ -292,7 +289,7 @@ if __name__ == '__main__':
         # Create restore script
         with open(file_child+".cmd", "w") as fs:
             fs.write(f"@REM Run this script to restore the original deduplicated file; block size:{block_size}B, hash:{hash_salt}\n")
-            fs.write(f"@{sys.argv[0]} -r {file_base} {file_child} {file_diffs}")
+            fs.write(f"@\"{sys.argv[0]}\" -r \"{file_base}\" \"{file_child}\" \"{file_diffs}\"")
     else:
         print("Error")
 
