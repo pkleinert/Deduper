@@ -104,3 +104,4 @@ venv.bak/
 .mypy_cache/
 /.vs
 /envDeduper36
+/Deduper/dist2/Deduper.exe
