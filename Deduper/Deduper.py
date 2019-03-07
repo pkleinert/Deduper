@@ -124,6 +124,11 @@ def hash_from_file(file_hash):
 
 def deduplicate(file_base, file_child, file_diffs, print_progress=False):
     # Hash blocks of base file
+    if Path(file_diffs).is_file() and Path(file_child).stat().st_mtime <= Path(file_diffs).stat().st_mtime:
+        print(f'Diff:  dedup file "{file_diffs}" is up to date => no deduplicating required')
+        return
+
+    # Hash blocks of base file
     file_indexes_base = file_base + ext_hashes
     if Path(file_indexes_base).is_file() and Path(file_base).stat().st_mtime <= Path(file_indexes_base).stat().st_mtime:
         print(f'Base:  reading {file_indexes_base}')

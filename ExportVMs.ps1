@@ -125,7 +125,7 @@ if (-not ([string]::IsNullOrEmpty($DiffBackupFolder))) {
         # Deduplicate
         Write-Output "Deduplicating and copying deduplicated backups to folder: $DiffBackupFolder" | Tee-Object -Append -FilePath "$LogFile"
         $BaseFolder=$DedupBase + '\' + (Get-Content "$BaseHistoryFile" -Last 1)
-        Write-Output ".\HyperVBackupDeduper.ps1 `"$BaseFolder`" `"$BackupFolder`" `"$DiffBackupFolder\$Date-$Time`"" | Tee-Object -Append -FilePath "$LogFile"
+        Write-Output ".\HyperVBackupDeduper.ps1 `"$BackupFolder`" `"$BaseFolder`" `"$DiffBackupFolder\$Date-$Time`"" | Tee-Object -Append -FilePath "$LogFile"
         .\HyperVBackupDeduper.ps1 "$BackupFolder" "$BaseFolder" "$DiffBackupFolder\$Date-$Time" | Tee-Object -Append -FilePath "$LogFile"
     }
 }

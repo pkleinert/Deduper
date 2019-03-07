@@ -16,6 +16,7 @@ function DoDedup {
   Param ($filter)
   $DiskPaths=(Get-ChildItem -Recurse -Path "$BackupFolder" -File -Filter $filter -Name)
   foreach($DiskPath in $diskPaths) {
+    echo ""
     echo ("{0:yyyy-MM-dd hh:mm:ss}" -f (get-date))
     $FileLast="$BackupFolder\$DiskPath"
 
@@ -27,10 +28,16 @@ function DoDedup {
       # Deduplicate
       $FileBase="$BaseFolder\$DiskPath"
       $FileDedup=$FileLast + ".dex"
-      if (Test-Path $FileBase) {
-        if (Test-Path $FileDedup) {
-          # Skip - Deduplicated file exists already
-          echo ":D $FileBase # $FileLast -> $FileDedup"
+      if (Test-Path "$FileBase") {
+        if (Test-Path "$FileDedup") {
+	      if ((Get-Item "$FileLast").LastWriteTime -lt (Get-Item "$FileDedup").LastWriteTime) {
+            # Skip - Deduplicated file exists already
+            echo (":D $FileBase # $FileLast -> $FileDedup   (dedup file up to date: " + (Get-Item "$FileLast").LastWriteTime + " older than " + (Get-Item "$FileDedup").LastWriteTime + ")" )
+          } else {
+            # Deduplicate since the $FileLast is newer than $FileDedup
+            echo (":] $FileBase # $FileLast -> $FileDedup   (backup file changed: " + (Get-Item "$FileLast").LastWriteTime + " newer than " + (Get-Item "$FileDedup").LastWriteTime + ")"  )
+            &($DeduperExe) -sd "$FileBase" "$FileLast" "$FileDedup"
+          }
         } else {
           # Deduplicate
           echo ":) $FileBase # $FileLast -> $FileDedup"
