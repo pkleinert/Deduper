@@ -61,6 +61,8 @@ echo "Deduplicating VHD disks:"
 DoDedup("*.vhd")
 echo "Deduplicating AVHDX disks:"
 DoDedup("*.avhdx")
+echo "Deduplicating AVHD disks:"
+DoDedup("*.avhd")
 
 # Copy deduplicated backups to a new folder (skip VHD, VHDX, AVHDX files)
 if (-not ([string]::IsNullOrEmpty($DiffBackupFolder)))
