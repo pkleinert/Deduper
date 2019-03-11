@@ -16,10 +16,13 @@ Param (
     [Int]$BaseHistoryKeep = 2
 )
 
-(get-process | ?{$_.ID -eq $pid}).priorityclass = "BelowNormal"
-
+# Preset variables
 $Date=Get-Date -format "yyyyMMdd"
 $Time=Get-Date -format "HHmm"
+$HistoryFile="$BackupFolder\history.txt"
+
+# Lower process priority
+(get-process | ?{$_.ID -eq $pid}).priorityclass = "BelowNormal"
 
 # Create backup (sub)folders
 New-Item -Force "$BackupFolder" -Type directory | Out-Null
@@ -35,7 +38,6 @@ if ($HistoryKeep -lt 0) {
     Write-Output "Not touching previous backups..." | Tee-Object -Append -FilePath "$LogFile"
 } else {
     # Check backup count
-    $HistoryFile="$BackupFolder\history.txt"
     $HistoryCnt = (Get-Content "$HistoryFile" | Measure-Object –Line).Lines
     if ($HistoryCnt -gt $HistoryKeep) {
     	# delete the oldest backup
@@ -125,7 +127,7 @@ if (-not ([string]::IsNullOrEmpty($DiffBackupFolder))) {
         # Deduplicate
         Write-Output "Deduplicating and copying deduplicated backups to folder: $DiffBackupFolder" | Tee-Object -Append -FilePath "$LogFile"
         $BaseFolder=$DedupBase + '\' + (Get-Content "$BaseHistoryFile" -Last 1)
-        Write-Output ".\HyperVBackupDeduper.ps1 `"$BackupFolder`" `"$BaseFolder`" `"$DiffBackupFolder\$Date-$Time`"" | Tee-Object -Append -FilePath "$LogFile"
+        Write-Output ".\HyperVBackupDeduper.ps1 `"$BaseFolder`" `"$BackupFolder`" `"$DiffBackupFolder\$Date-$Time`"" | Tee-Object -Append -FilePath "$LogFile"
         .\HyperVBackupDeduper.ps1 "$BackupFolder" "$BaseFolder" "$DiffBackupFolder\$Date-$Time" | Tee-Object -Append -FilePath "$LogFile"
     }
 }
