@@ -69,7 +69,7 @@ if (-not ([string]::IsNullOrEmpty($DiffBackupFolder)))
 {
   echo "Copying deduplicated backups to folder: $DiffBackupFolder"
   New-Item -Force "$DiffBackupFolder" -type directory | Out-Null
-  $exclude = @("*.vhd","*.vhdx","*.avhdx")
+  $exclude = @("*.vhd", "*.vhdx", "*.avhd", "*.avhdx")
   Get-ChildItem $BackupFolder -Recurse -Exclude $exclude | Copy-Item -Destination {Join-Path $DiffBackupFolder $_.FullName.Substring($BackupFolder.length)}
   echo "Done"
 } else {
